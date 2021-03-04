@@ -63,6 +63,7 @@ ed = tk.Entry(root, width=20, textvariable=entry_var).pack()
 btn = tk.Button(root, text="Send", width=20, command=fn_out()).pack()
 out_flag = False
 root.after(10, fn_disp())
+
 root.mainloop()
 
 
