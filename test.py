@@ -7,6 +7,7 @@ class Application(tk.Frame):
     # Конструктор
     def __init__(self, master=None, title=None):
         super().__init__(master)
+        self.pack()
         self.master = master
         self.master.title(title)
         self.set_layout()
@@ -22,27 +23,31 @@ class Application(tk.Frame):
         ports.reverse()
 
         # Лейба и список портов
-        self.port_list_lable = ttk.Label(master=self.master, text="Выбирите доступный порт:")
+        self.port_list_lable = ttk.Label(self, text="Выбирите доступный порт:")
         self.port_list_lable.grid(row=0, column=0, sticky=tk.W, padx=10, pady=4)
-        self.port_list = ttk.Combobox(self.master, values=ports)
+        self.port_list = ttk.Combobox(self, values=ports)
         self.port_list.grid(row=0, column=1, sticky=tk.W+tk.E, padx=10)
 
-        #Лейба и строка для ввода скорости работы порта
-        self.port_spd_lable = ttk.Label(master=self.master, text="Укажите скорость передачи:")
+        # Лейба и строка для ввода скорости работы порта
+        self.port_spd_lable = ttk.Label(self, text="Укажите скорость передачи:")
         self.port_spd_lable.grid(row=1, column=0, sticky=tk.W, padx=10, pady=4)
-        self.port_spd_entity = ttk.Entry(master=self.master)
+        self.port_spd_entity = ttk.Entry(self)
         self.port_spd_entity.grid(row=1, column=1, sticky=tk.W+tk.E, padx=10)
 
         # Кнопка подключения
-        self.connect_btn = ttk.Button(self.master, text="Подключиться", command=self.connect())
+        self.connect_btn = ttk.Button(self)
+        self.connect_btn["text"] = "Подключиться"
+        self.connect_btn["command"] = self.connect
         self.connect_btn.grid(row=3, columnspan=3, column=0, sticky=tk.E, padx=10, pady=4)
 
-    #Функция подключения к порту (ТОДУ)
+    # Функция подключения к порту (ТОДУ)
     def connect(self):
         try:
-            self.connection = serial.Serial(self.port_list.current(), baudrate=self.port_spd_entity.get(), timeout=1)
-        except ValueError:
-            print("не удалось подключиться: порт не найден")
+            self.connection = serial.Serial(self.port_list.get(), baudrate=int(self.port_spd_entity.get()), timeout=1)
+        except ValueError as e:
+            errHandler(e)
+        except serial.SerialException as e:
+            errHandler(e)
         else:
             print(self.connection)
 
@@ -64,6 +69,9 @@ class Application(tk.Frame):
     # Легаси
     def print_port(self):
         print(self.connection)
+
+def errHandler(e = None):
+    print(f"\033[31mExcepted Error Description:\033[0m\n{e}")
 
 # Начало программы
 root1 = tk.Tk()

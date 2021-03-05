@@ -12,7 +12,7 @@ for p in ports:
 in_list = []        # список полученных строк
 out_flag = False    # признак занятости вывода и ввода
 
-ser = serial.Serial('COM3', 9600, timeout=1)
+ser = serial.Serial('COM1', 9600, timeout=1)
 
 # функция приема строки
 def fn_in():
