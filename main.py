@@ -4,6 +4,7 @@ from tkinter import filedialog as fd
 import serial
 import serial.tools.list_ports as port_list
 import threading
+import time
 
 class Connection(tk.Frame):
     # Конструктор
@@ -67,7 +68,7 @@ class Connected(tk.ttk.Frame):
         self.parent = parent
         self.pack()
         self.master.title(self.parent.master.title()+f" ({self.parent.portVar.get()})")
-        self.master.geometry('550x550')
+        #self.master.geometry('550x550')
         self.master.resizable(False, False)
         self.parent.master.withdraw()
         self.filename = tk.StringVar()
@@ -84,29 +85,33 @@ class Connected(tk.ttk.Frame):
         self.file_lable = ttk.Label(self, text="Выбирите файл:")
         self.file_lable.grid(row=0, column=0, sticky=tk.W, padx=10, pady=10)
 
-        # Кнопка отключения
-        self.disconnect_btn = tk.ttk.Button(self, text = "Отключиться", command = self.disconnect)
-        self.disconnect_btn.grid(row=0, column=1, sticky=tk.E, padx=10, pady=10)
-
         # Кнопка выбора файла
-        self.pick_file_btn = tk.ttk.Button(self, text="Обзор", command=self.pick_file)
-        self.pick_file_btn.grid(row=1, column=0, sticky=tk.W, padx=10, pady=10)
+        self.pick_file_btn = tk.Button(self, text="Обзор", command=self.pick_file, fg='blue')
+        self.pick_file_btn.grid(row=0, column=1, sticky=tk.W, padx=10, pady=10)
 
         # Лейба названия файла
         self.file_name_lable = ttk.Label(self, text=self.filename.get())
-        self.file_name_lable.grid(row=1, column=1, sticky=tk.W, padx=10, pady=10)
+        self.file_name_lable.grid(row=0, column=2, sticky=tk.W, padx=10, pady=10)
+
+        # Кнопка отключения
+        self.disconnect_btn = tk.Button(self, text="Отключиться", command=self.disconnect, fg='red')
+        self.disconnect_btn.grid(row=0, column=3, sticky=tk.E, padx=10, pady=10)
 
         # Кнопка отправки файла
-        self.send_file_btn = tk.ttk.Button(self, text="Отправить", command=self.send_file)
-        self.send_file_btn.grid(row=2, column=1, sticky=tk.E, padx=10, pady=10)
+        self.send_file_btn = tk.Button(self, text="Отправить", command=self.send_file, fg='green')
+        self.send_file_btn.grid(row=1, column=0, sticky=tk.W, padx=10, pady=10)
+
+        # Разделитель
+        self.separator = tk.ttk.Separator(self)
+        self.separator.grid(row=2, column=0, columnspan=4, sticky=tk.W+tk.E)
 
         # Лейба получения файла
-        self.file_recieved_lable = ttk.Label(self, text="0 файлов получено")
-        self.file_recieved_lable.grid(row=4, column=1, sticky=tk.E, padx=10, pady=10)
+        self.file_recieved_lable = tk.Label(self, text="0 файлов получено", fg='red')
+        self.file_recieved_lable.grid(row=3, column=3, sticky=tk.E, padx=10, pady=10)
 
         # Кнопка сохранения файла
-        self.send_file_btn = tk.ttk.Button(self, text="Сохранить", command=self.save_file)
-        self.send_file_btn.grid(row=6, column=1, sticky=tk.W, padx=10, pady=10)
+        self.save_file_btn = tk.ttk.Button(self, text="Сохранить", command=self.save_file, state="disabled")
+        self.save_file_btn.grid(row=3, column=0, sticky=tk.W, padx=10, pady=10)
 
     # Функция выбора файла
     def pick_file(self):
@@ -131,22 +136,22 @@ class Connected(tk.ttk.Frame):
         if len(out_str) > 0:
             name = self.filename.get().encode()
             self.parent.connection.write(name)
-            sending_str = name + b'\r\n' + out_str
-            print(sending_str)
-            self.parent.connection.write(sending_str)
+            time.sleep(1)
+            self.parent.connection.write(out_str)
 
     # Функция сохранения файла
     def save_file(self):
         text2save = ""
-        for line in self.in_list:
-            text2save = ""
         self.save = fd.asksaveasfile(mode='w', defaultextension=".txt")
         if self.save is None:
             return
+
         for line in self.in_list:
-            self.save.write(str(line))
+            text2save += line.decode()
+        self.save.write(text2save.replace('\r',''))
         self.save.close()
 
+    # Функция отключения
     def disconnect(self):
         # закрываем подключение к com порту
         self.parent.connection.close()
@@ -155,8 +160,11 @@ class Connected(tk.ttk.Frame):
         # закрываем текущее окно
         self.master.destroy()
 
+    # Потоковая функция на прием из com-порта
+    # TODO: Переделать логику работы на словарях (для получения множества файлов)
     def istream(self):
         in_str = ""
+        flag = False
         while 1:
             # ждем прихода к нам строки
             in_len = 0
@@ -164,15 +172,19 @@ class Connected(tk.ttk.Frame):
                 in_str = self.parent.connection.readline()
                 in_len = len(in_str)
                 # устанавливаем название полученного файла лейбе
-                if self.in_list.__len__() > 1:
+                if self.in_list.__len__() > 1 and flag == False:
                     bin_file_name = self.in_list[0]
-                    file_name = bin_file_name.decode()
-
-                    self.file_recieved_lable.config(text="Получен файл: " + file_name)
-
+                    self.recieved_file_name = bin_file_name.decode()
+                    self.file_recieved_lable.config(text="Получен файл: " + self.recieved_file_name)
+                    self.file_recieved_lable.config(fg="green")
+                    self.in_list.pop(0)
+                    flag = True
 
             # ждем освобождение входного буфера и записываем в него строку
             self.in_list.append(in_str)
+            if self.in_list.__len__() > 1:
+                self.save_file_btn.config(state="enable")
+
 
 # Функция вывода ошибок в консоль
 def errHandler(e = None):
@@ -184,7 +196,7 @@ root2 = tk.Tk()
 
 # Начало программы
 if __name__ == '__main__':
-    root1.geometry(f'350x100+{int(root1.winfo_screenwidth()/2)-100}-{int(root1.winfo_screenheight()/2)+50}')
+    root1.geometry(f'350x100+{int(root1.winfo_screenwidth()/2)-400}-{int(root1.winfo_screenheight()/2)}')
     root2.geometry(f'350x100+{int(root1.winfo_screenwidth()/2)}-{int(root1.winfo_screenheight()/2)}')
     app1 = Connection(master=root1, title="Станция 1")
     app2 = Connection(master=root2, title="Станция 2")
