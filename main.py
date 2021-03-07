@@ -3,6 +3,7 @@ from tkinter import ttk
 from tkinter import filedialog as fd
 import serial
 import serial.tools.list_ports as port_list
+import threading
 
 class Connection(tk.Frame):
     # Конструктор
@@ -34,6 +35,7 @@ class Connection(tk.Frame):
         self.port_spd_lable = ttk.Label(self, text="Укажите скорость передачи:")
         self.port_spd_lable.grid(row=1, column=0, sticky=tk.W, padx=10, pady=4)
         self.port_spd_entity = ttk.Entry(self)
+        self.port_spd_entity.insert(tk.END, "9600")
         self.port_spd_entity.grid(row=1, column=1, sticky=tk.W+tk.E, padx=10)
 
         # Кнопка подключения
@@ -71,6 +73,10 @@ class Connected(tk.ttk.Frame):
         self.filename = tk.StringVar()
         self.filename.set("Файл не выбран")
         self.set_layout()
+        self.in_list = []
+        self.tr_in = threading.Thread(target=self.istream)
+        self.tr_in.daemon = True
+        self.tr_in.start()
 
     # Функция настройки элементов интерфейса
     def set_layout(self):
@@ -90,15 +96,56 @@ class Connected(tk.ttk.Frame):
         self.file_name_lable = ttk.Label(self, text=self.filename.get())
         self.file_name_lable.grid(row=1, column=1, sticky=tk.W, padx=10, pady=10)
 
+        # Кнопка отправки файла
+        self.send_file_btn = tk.ttk.Button(self, text="Отправить", command=self.send_file)
+        self.send_file_btn.grid(row=2, column=1, sticky=tk.E, padx=10, pady=10)
+
+        # Лейба получения файла
+        self.file_recieved_lable = ttk.Label(self, text="0 файлов получено")
+        self.file_recieved_lable.grid(row=4, column=1, sticky=tk.E, padx=10, pady=10)
+
+        # Кнопка сохранения файла
+        self.send_file_btn = tk.ttk.Button(self, text="Сохранить", command=self.save_file)
+        self.send_file_btn.grid(row=6, column=1, sticky=tk.W, padx=10, pady=10)
+
     # Функция выбора файла
     def pick_file(self):
         # сохраняем путь до файла
         self.pwd = fd.askopenfilename()
+        if self.pwd == '':
+            return
         # вынимаем название файла
         self.temp = self.pwd.split('/')
         self.filename.set(self.temp[-1])
         # устанавливаем название выбранного фала лейбе
         self.file_name_lable.config(text=self.filename.get())
+
+    # Функция чтения файла
+    def read_file(self):
+        self.f_bin = open(self.pwd, 'rb').read()
+
+    # Функция отправки файла
+    def send_file(self):
+        self.read_file()
+        out_str = self.f_bin
+        if len(out_str) > 0:
+            name = self.filename.get().encode()
+            self.parent.connection.write(name)
+            sending_str = name + b'\r\n' + out_str
+            print(sending_str)
+            self.parent.connection.write(sending_str)
+
+    # Функция сохранения файла
+    def save_file(self):
+        text2save = ""
+        for line in self.in_list:
+            text2save = ""
+        self.save = fd.asksaveasfile(mode='w', defaultextension=".txt")
+        if self.save is None:
+            return
+        for line in self.in_list:
+            self.save.write(str(line))
+        self.save.close()
 
     def disconnect(self):
         # закрываем подключение к com порту
@@ -107,6 +154,25 @@ class Connected(tk.ttk.Frame):
         self.parent.master.deiconify()
         # закрываем текущее окно
         self.master.destroy()
+
+    def istream(self):
+        in_str = ""
+        while 1:
+            # ждем прихода к нам строки
+            in_len = 0
+            while in_len < 1:
+                in_str = self.parent.connection.readline()
+                in_len = len(in_str)
+                # устанавливаем название полученного файла лейбе
+                if self.in_list.__len__() > 1:
+                    bin_file_name = self.in_list[0]
+                    file_name = bin_file_name.decode()
+
+                    self.file_recieved_lable.config(text="Получен файл: " + file_name)
+
+
+            # ждем освобождение входного буфера и записываем в него строку
+            self.in_list.append(in_str)
 
 # Функция вывода ошибок в консоль
 def errHandler(e = None):

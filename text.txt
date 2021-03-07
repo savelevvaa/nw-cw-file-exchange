@@ -1,0 +1,3 @@
+some text
+some text next line
+так же русский текст
