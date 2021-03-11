@@ -48,7 +48,7 @@ class Connection(tk.Frame):
     # Функция подключения к порту
     def connect(self):
         try:
-            self.connection = serial.Serial(self.port_list.get(), baudrate=int(self.port_spd_entity.get()), timeout=1)
+            self.connection = serial.Serial(port=self.port_list.get(), baudrate=int(self.port_spd_entity.get()), timeout=0.5)
         except ValueError as e:
             errHandler(e)
         except serial.SerialException as e:
@@ -68,13 +68,12 @@ class Connected(tk.ttk.Frame):
         self.parent = parent
         self.pack()
         self.master.title(self.parent.master.title()+f" ({self.parent.portVar.get()})")
-        #self.master.geometry('550x550')
         self.master.resizable(False, False)
         self.parent.master.withdraw()
         self.filename = tk.StringVar()
         self.filename.set("Файл не выбран")
         self.set_layout()
-        self.in_list = []
+        self.files = dict()
         self.tr_in = threading.Thread(target=self.istream)
         self.tr_in.daemon = True
         self.tr_in.start()
@@ -106,12 +105,16 @@ class Connected(tk.ttk.Frame):
         self.separator.grid(row=2, column=0, columnspan=4, sticky=tk.W+tk.E)
 
         # Лейба получения файла
-        self.file_recieved_lable = tk.Label(self, text="0 файлов получено", fg='red')
-        self.file_recieved_lable.grid(row=3, column=3, sticky=tk.E, padx=10, pady=10)
+        self.file_recieved_lable = tk.Label(self, text="Получено файлов: 0", fg='red')
+        self.file_recieved_lable.grid(row=3, column=2, sticky=tk.E, padx=10, pady=10)
 
         # Кнопка сохранения файла
         self.save_file_btn = tk.ttk.Button(self, text="Сохранить", command=self.save_file, state="disabled")
         self.save_file_btn.grid(row=3, column=0, sticky=tk.W, padx=10, pady=10)
+
+        # Выпадающий список полученных файлов
+        self.files_list = ttk.Combobox(self)
+        self.files_list.grid(row=3, column=3, sticky=tk.W, padx=10, pady=10)
 
     # Функция выбора файла
     def pick_file(self):
@@ -132,22 +135,31 @@ class Connected(tk.ttk.Frame):
     # Функция отправки файла
     def send_file(self):
         self.read_file()
-        out_str = self.f_bin
-        if len(out_str) > 0:
+        data_str = self.f_bin
+        if len(data_str) > 0:
             name = self.filename.get().encode()
-            self.parent.connection.write(name)
-            time.sleep(1)
+            out_str = name + b'\n' + data_str
             self.parent.connection.write(out_str)
 
     # Функция сохранения файла
     def save_file(self):
         text2save = ""
-        self.save = fd.asksaveasfile(mode='w', defaultextension=".txt")
-        if self.save is None:
+        # типы файлов (на сохранении)
+        filestypes = [('Text Document', '*.txt'),
+                      ('Python Files', '*.py'),
+                      ('All Files', '*.*')]
+        # получаем имя файла для сохранения
+        file_name = self.files_list.get()
+        if file_name == "":
             return
-
+        # получаем содержимое файла
+        self.in_list = self.files[file_name]
         for line in self.in_list:
             text2save += line.decode()
+        # вызываем диалог сохранения файла
+        self.save = fd.asksaveasfile(mode='w', filetypes=filestypes, defaultextension=filestypes)
+        if self.save is None:
+            return
         self.save.write(text2save.replace('\r',''))
         self.save.close()
 
@@ -161,29 +173,34 @@ class Connected(tk.ttk.Frame):
         self.master.destroy()
 
     # Потоковая функция на прием из com-порта
-    # TODO: Переделать логику работы на словарях (для получения множества файлов)
     def istream(self):
         in_str = ""
-        flag = False
         while 1:
             # ждем прихода к нам строки
             in_len = 0
             while in_len < 1:
-                in_str = self.parent.connection.readline()
+                # читаем из порта
+                in_str = self.parent.connection.readlines()
                 in_len = len(in_str)
-                # устанавливаем название полученного файла лейбе
-                if self.in_list.__len__() > 1 and flag == False:
-                    bin_file_name = self.in_list[0]
-                    self.recieved_file_name = bin_file_name.decode()
-                    self.file_recieved_lable.config(text="Получен файл: " + self.recieved_file_name)
-                    self.file_recieved_lable.config(fg="green")
-                    self.in_list.pop(0)
-                    flag = True
+                if in_len > 1:
+                    # получаем имя файла
+                    bin_file_name = in_str.pop(0)
+                    self.recieved_file_name = bin_file_name.decode().replace('\n','')
+                    # заполняем словарь { имя файла : содержание (байты) }
+                    self.files[self.recieved_file_name] = in_str
 
-            # ждем освобождение входного буфера и записываем в него строку
-            self.in_list.append(in_str)
-            if self.in_list.__len__() > 1:
+            if self.files.__len__() > 0:
+                # разблокируем кнопку сохранения
                 self.save_file_btn.config(state="enable")
+                # обновляем лейбу
+                self.file_recieved_lable.config(text="Получено файлов: " + str(self.files.__len__()))
+                self.file_recieved_lable.config(fg="green")
+                # получаем списко ключей (получаем имена файлов)
+                keys = []
+                for key in sorted(self.files.keys()):
+                    keys.append(key)
+                # обновляем выпадающий список полученных файлов
+                self.files_list.config(values=keys)
 
 
 # Функция вывода ошибок в консоль
@@ -202,3 +219,30 @@ if __name__ == '__main__':
     app2 = Connection(master=root2, title="Станция 2")
     app1.mainloop()
     app2.mainloop()
+
+
+
+# # Потоковая функция на прием из com-порта
+#     # TODO: Переделать логику работы на словарях (для получения множества файлов)
+#     def istream(self):
+#         in_str = ""
+#         flag = False
+#         while 1:
+#             # ждем прихода к нам строки
+#             in_len = 0
+#             while in_len < 1:
+#                 in_str = self.parent.connection.readline()
+#                 in_len = len(in_str)
+#                 # устанавливаем название полученного файла лейбе
+#                 if self.in_list.__len__() > 1 and flag == False:
+#                     bin_file_name = self.in_list[0]
+#                     self.recieved_file_name = bin_file_name.decode()
+#                     self.file_recieved_lable.config(text="Получен файл: " + self.recieved_file_name)
+#                     self.file_recieved_lable.config(fg="green")
+#                     self.in_list.pop(0)
+#                     flag = True
+#
+#             # ждем освобождение входного буфера и записываем в него строку
+#             self.in_list.append(in_str)
+#             if self.in_list.__len__() > 1:
+#                 self.save_file_btn.config(state="enable")
