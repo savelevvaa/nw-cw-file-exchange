@@ -29,3 +29,4 @@ for byte in byte_list:
     str_text += str(byte_int).decode()
 
 print(str_text)
+
