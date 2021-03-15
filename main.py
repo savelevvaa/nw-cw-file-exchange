@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd
+from tkinter import messagebox as msb
 import serial
 import serial.tools.list_ports as port_list
 import threading
@@ -86,13 +87,18 @@ class Connection(tk.Frame):
                                             bytesize=int(self.bytesize_entity.get()),
                                             stopbits=int(self.stopbit_entity.get()),
                                             timeout=float(self.timeout_entity.get()))
-        except ValueError as e:
-            errHandler(e)
+
         except serial.SerialException as e:
+            msb.showwarning(title="Ошибка подключения", message="Укажите иной порт")
             errHandler(e)
-        finally:
+            return
+        else:
             print(self.connection)
             session = Session(username=self.user_entity.get(), con=self.connection)
+            for user in sessions.keys():
+                if user == session.username:
+                    msb.showwarning(title="Ошибка подключения", message="Укажите иное имя пользователя")
+                    return
             sessions[session.username] = session.con
             Connected(master=tk.Toplevel(),
                       parent=self,
@@ -112,8 +118,7 @@ class Connected(tk.ttk.Frame):
                           f"{self.session.con.baudrate})")
         self.master.resizable(False, False)
         self.parent.master.withdraw()
-        self.filename = tk.StringVar()
-        self.filename.set("Файл не выбран")
+        self.filename = "Файл не выбран"
         self.set_layout()
         self.files = dict()
 
@@ -149,7 +154,7 @@ class Connected(tk.ttk.Frame):
         self.pick_file_btn.grid(row=0, column=1, sticky=tk.W, padx=10, pady=10)
 
         # Лейба названия файла
-        self.file_name_lable = ttk.Label(self, text=self.filename.get())
+        self.file_name_lable = ttk.Label(self, text=self.filename)
         self.file_name_lable.grid(row=0, column=2, sticky=tk.W, padx=10, pady=10)
 
         # Кнопка отключения
@@ -184,9 +189,9 @@ class Connected(tk.ttk.Frame):
             return
         # вынимаем название файла
         self.temp = self.pwd.split('/')
-        self.filename.set(self.temp[-1])
-        # устанавливаем название выбранного фала лейбе
-        self.file_name_lable.config(text=self.filename.get())
+        self.filename = self.temp[-1]
+        # устанавливаем название выбранного файла лейбе
+        self.file_name_lable.config(text=self.filename)
 
     # Функция чтения файла
     def read_file(self):
@@ -197,7 +202,7 @@ class Connected(tk.ttk.Frame):
         self.read_file()
         data_str = self.f_bin
         if len(data_str) > 0:
-            name = self.filename.get().encode()
+            name = self.filename.encode()
             out_str = name + b'\n' + data_str
             self.parent.connection.write(out_str)
 
