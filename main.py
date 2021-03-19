@@ -7,6 +7,7 @@ import serial.tools.list_ports as port_list
 import threading
 import time
 from network.session import *
+from network.frame import *
 
 class Connection(tk.Frame):
     # Конструктор
@@ -108,6 +109,7 @@ class Connection(tk.Frame):
 class Connected(tk.ttk.Frame):
     # Конструктор
     def __init__(self, master=None, parent = None, session=None):
+        # База
         super().__init__(master)
         self.parent = parent
         self.pack()
@@ -118,10 +120,17 @@ class Connected(tk.ttk.Frame):
                           f"{self.session.con.baudrate})")
         self.master.resizable(False, False)
         self.parent.master.withdraw()
-        self.filename = "Файл не выбран"
-        self.set_layout()
-        self.files = dict()
 
+        # Переменные
+        self.filename = "Файл не выбран"
+        self.files = dict()
+        self.LINKED = False
+
+        # Методы
+        self.set_layout()
+        self.send_link_frame()
+
+        # Потоки
         self.tr_in = threading.Thread(target=self.istream)
         self.tr_in.daemon = True
         self.tr_in.start()
@@ -180,6 +189,11 @@ class Connected(tk.ttk.Frame):
         # Выпадающий список полученных файлов
         self.files_list = ttk.Combobox(self)
         self.files_list.grid(row=3, column=3, sticky=tk.W, padx=10, pady=10)
+
+    def send_link_frame(self):
+        frame = Frame(type=Frame.Type.LINK)
+        out_str = b'\n'.join(frame.data)
+        self.parent.connection.write(out_str)
 
     # Функция выбора файла
     def pick_file(self):
@@ -241,20 +255,25 @@ class Connected(tk.ttk.Frame):
 
     # Потоковая функция на прием из com-порта
     def istream(self):
-        in_str = ""
         while 1:
             # ждем прихода к нам строки
             in_len = 0
             while in_len < 1:
                 # читаем из порта
-                in_str = self.parent.connection.readlines()
-                in_len = len(in_str)
-                if in_len > 1:
+                in_list = self.parent.connection.readlines()
+                in_len = len(in_list)
+                if in_len > 0:
+                    frame_type = in_list[0]
+                    if frame_type == Frame.Type.LINK.value and self.LINKED == False:
+                        print(f'( {self.session.username} ) : '+'\033[33mLINK frame recieved\033[0m')
+                        self.LINKED = True
+                        self.send_link_frame()
+                        pass
                     # получаем имя файла
-                    bin_file_name = in_str.pop(0)
-                    self.recieved_file_name = bin_file_name.decode().replace('\n','')
+                    #bin_file_name = in_.pop(0)
+                    #self.recieved_file_name = bin_file_name.decode().replace('\n','')
                     # заполняем словарь { имя файла : содержание (байты) }
-                    self.files[self.recieved_file_name] = in_str
+                    #self.files[self.recieved_file_name] = in_str
 
             if self.files.__len__() > 0:
                 # разблокируем кнопку сохранения
