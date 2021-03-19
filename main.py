@@ -7,6 +7,7 @@ import serial.tools.list_ports as port_list
 import threading
 import time
 from network.session import *
+from network.frame import *
 
 class Connection(tk.Frame):
     # Конструктор
@@ -108,6 +109,7 @@ class Connection(tk.Frame):
 class Connected(tk.ttk.Frame):
     # Конструктор
     def __init__(self, master=None, parent = None, session=None):
+        # База
         super().__init__(master)
         self.parent = parent
         self.pack()
@@ -118,10 +120,17 @@ class Connected(tk.ttk.Frame):
                           f"{self.session.con.baudrate})")
         self.master.resizable(False, False)
         self.parent.master.withdraw()
-        self.filename = "Файл не выбран"
-        self.set_layout()
-        self.files = dict()
 
+        # Переменные
+        self.filename = "Файл не выбран"
+        self.files = dict()
+        self.LINKED = False
+
+        # Методы
+        self.set_layout()
+        self.send_link_frame()
+
+        # Потоки
         self.tr_in = threading.Thread(target=self.istream)
         self.tr_in.daemon = True
         self.tr_in.start()
@@ -135,51 +144,74 @@ class Connected(tk.ttk.Frame):
 
         # Фрейм для лейбы и пользователей
         self.entryFrame = tk.Frame(self, width=130)
-        self.entryFrame.grid(row=0, rowspan=4, column=4)
+        self.entryFrame.grid(row=0, rowspan=5, column=4)
 
         # Лейба пользователей
         self.session_lable = ttk.Label(self.entryFrame, text="Пользователи:")
-        self.session_lable.grid(row=0, column=0, sticky=tk.W, padx=10, pady=10)
+        self.session_lable.grid(row=0, column=0, sticky=tk.W, padx=10, pady=6)
 
         # Текстбокс для пользователей
-        self.textbox = tk.Text(self.entryFrame, height=5, width=13)
-        self.textbox.grid(row=1, column=0, padx=10, pady=10)
+        self.textbox = tk.Text(self.entryFrame, height=8, width=13)
+        self.textbox.grid(row=1, column=0, padx=10, pady=6)
 
         # Лейба выбора файла
         self.file_lable = ttk.Label(self, text="Выбирите файл:")
-        self.file_lable.grid(row=0, column=0, sticky=tk.W, padx=10, pady=10)
+        self.file_lable.grid(row=0, column=0, sticky=tk.W, padx=10, pady=6)
 
         # Кнопка выбора файла
         self.pick_file_btn = tk.Button(self, text="Обзор", command=self.pick_file, fg='blue')
-        self.pick_file_btn.grid(row=0, column=1, sticky=tk.W, padx=10, pady=10)
+        self.pick_file_btn.grid(row=0, column=1, sticky=tk.W, padx=10, pady=6)
 
         # Лейба названия файла
         self.file_name_lable = ttk.Label(self, text=self.filename)
-        self.file_name_lable.grid(row=0, column=2, sticky=tk.W, padx=10, pady=10)
+        self.file_name_lable.grid(row=0, column=2, sticky=tk.W, padx=10, pady=6)
 
         # Кнопка отключения
         self.disconnect_btn = tk.Button(self, text="Отключиться", command=self.disconnect, fg='red')
-        self.disconnect_btn.grid(row=0, column=3, sticky=tk.E, padx=10, pady=10)
+        self.disconnect_btn.grid(row=0, column=3, sticky=tk.E, padx=10, pady=6)
+
+        # Кнопка просмотра файла
+        self.show_file_btn = tk.Button(self, text="Просмотр", command=self.show_file, state="disabled")
+        self.show_file_btn.grid(row=2, column=0, sticky=tk.W, padx=10, pady=6)
 
         # Кнопка отправки файла
-        self.send_file_btn = tk.Button(self, text="Отправить", command=self.send_file, fg='green')
-        self.send_file_btn.grid(row=1, column=0, sticky=tk.W, padx=10, pady=10)
+        self.send_file_btn = tk.Button(self, text="Отправить", command=self.send_file, fg='green', state="disabled")
+        self.send_file_btn.grid(row=2, column=1, sticky=tk.W, padx=10, pady=6)
+
+        # Лейба логического соединения
+        self.logic_con_lable = ttk.Label(self, text="Логическое соединение: не установлено")
+        self.logic_con_lable.grid(row=1, column=0, columnspan=4, sticky=tk.W, padx=10, pady=6)
 
         # Разделитель
         self.separator = tk.ttk.Separator(self)
-        self.separator.grid(row=2, column=0, columnspan=4, sticky=tk.W+tk.E)
+        self.separator.grid(row=3, column=0, columnspan=4, sticky=tk.W+tk.E)
 
         # Лейба получения файла
         self.file_recieved_lable = tk.Label(self, text="Получено файлов: 0", fg='red')
-        self.file_recieved_lable.grid(row=3, column=2, sticky=tk.E, padx=10, pady=10)
+        self.file_recieved_lable.grid(row=4, column=2, sticky=tk.E, padx=10, pady=6)
 
         # Кнопка сохранения файла
         self.save_file_btn = tk.ttk.Button(self, text="Сохранить", command=self.save_file, state="disabled")
-        self.save_file_btn.grid(row=3, column=0, sticky=tk.W, padx=10, pady=10)
+        self.save_file_btn.grid(row=4, column=0, sticky=tk.W, padx=10, pady=6)
 
         # Выпадающий список полученных файлов
         self.files_list = ttk.Combobox(self)
-        self.files_list.grid(row=3, column=3, sticky=tk.W, padx=10, pady=10)
+        self.files_list.grid(row=4, column=3, sticky=tk.W, padx=10, pady=6)
+
+    def send_link_frame(self):
+        frame = Frame(type=Frame.Type.LINK)
+        self.parent.connection.write(frame.data)
+
+    def send_downlink_frame(self):
+        frame = Frame(type=Frame.Type.DOWNLINK)
+        self.parent.connection.write(frame.data)
+
+    def show_file(self):
+        self.read_file()
+        FileContent(master=tk.Toplevel(),
+                    parent=self,
+                    title=self.filename,
+                    content=self.f_bin)
 
     # Функция выбора файла
     def pick_file(self):
@@ -192,6 +224,7 @@ class Connected(tk.ttk.Frame):
         self.filename = self.temp[-1]
         # устанавливаем название выбранного файла лейбе
         self.file_name_lable.config(text=self.filename)
+        self.show_file_btn.config(state="normal")
 
     # Функция чтения файла
     def read_file(self):
@@ -204,7 +237,9 @@ class Connected(tk.ttk.Frame):
         if len(data_str) > 0:
             name = self.filename.encode()
             out_str = name + b'\n' + data_str
-            self.parent.connection.write(out_str)
+            frame = Frame(type=Frame.Type.DATA, data=out_str)
+            print('frame data before sending: ' + frame.data.decode())
+            self.parent.connection.write(frame.data)
 
     # Функция сохранения файла
     def save_file(self):
@@ -230,6 +265,8 @@ class Connected(tk.ttk.Frame):
 
     # Функция отключения
     def disconnect(self):
+        # разрываем логическое соединение
+        self.send_downlink_frame()
         # закрываем сессию
         sessions.pop(self.session.username)
         # закрываем подключение к com порту
@@ -241,20 +278,39 @@ class Connected(tk.ttk.Frame):
 
     # Потоковая функция на прием из com-порта
     def istream(self):
-        in_str = ""
         while 1:
             # ждем прихода к нам строки
             in_len = 0
             while in_len < 1:
                 # читаем из порта
-                in_str = self.parent.connection.readlines()
-                in_len = len(in_str)
-                if in_len > 1:
-                    # получаем имя файла
-                    bin_file_name = in_str.pop(0)
-                    self.recieved_file_name = bin_file_name.decode().replace('\n','')
-                    # заполняем словарь { имя файла : содержание (байты) }
-                    self.files[self.recieved_file_name] = in_str
+                in_list = self.parent.connection.readlines()
+                in_len = len(in_list)
+                if in_len > 0:
+                    frame_type = in_list.pop(0).replace(b'\n', b'')
+                    # ОБРАБАТЫВАЕМ ПОЛУЧЕННЫЙ ФРЕЙМ (по типу)
+                    if frame_type == Frame.Type.LINK.value and self.LINKED == False:
+                        print(f'( {self.session.username} ) : '+'\033[33mLINK frame recieved\033[0m')
+                        self.LINKED = True
+                        self.logic_con_lable.config(text="Логическое соединение: установлено")
+                        self.send_file_btn.config(state="normal")
+                        self.send_link_frame()
+                    elif frame_type == Frame.Type.ASK.value:
+                        print(f'( {self.session.username} ) : ' + '\033[33mASK frame recieved\033[0m')
+                    elif frame_type == Frame.Type.REP.value:
+                        print(f'( {self.session.username} ) : ' + '\033[33mREP frame recieved\033[0m')
+                    elif frame_type == Frame.Type.DATA.value:
+                        print(f'( {self.session.username} ) : ' + '\033[33mDATA frame recieved\033[0m')
+                        bin_file_name = in_list.pop(0)
+                        self.recieved_file_name = bin_file_name.decode().replace('\n','')
+                        # заполняем словарь { имя файла : содержание (байты) }
+                        self.files[self.recieved_file_name] = in_list
+                    elif frame_type == Frame.Type.ERROR.value:
+                        print(f'( {self.session.username} ) : ' + '\033[33mERROR frame recieved\033[0m')
+                    elif frame_type == Frame.Type.DOWNLINK.value:
+                        print(f'( {self.session.username} ) : ' + '\033[33mDOWNLINK frame recieved\033[0m')
+                        self.LINKED = False
+                        self.logic_con_lable.config(text="Логическое соединение: разорвано")
+                        self.send_file_btn.config(state="disabled")
 
             if self.files.__len__() > 0:
                 # разблокируем кнопку сохранения
@@ -281,6 +337,31 @@ class Connected(tk.ttk.Frame):
             self.textbox.insert(tk.INSERT, users)
             self.textbox.config(state=tk.DISABLED)
             time.sleep(1)
+
+class FileContent(tk.Frame):
+    # Конструктор
+    def __init__(self, master=None, parent=None, title=None, content=None):
+        super().__init__(master)
+        self.parent = parent
+        self.pack()
+        self.master = master
+        self.master.title(title)
+        self.master.resizable(False, False)
+        self.content = content
+
+        self.set_layout()
+
+    def set_layout(self):
+        # Лейба выбора файла
+        self.lable = ttk.Label(self, text="Содержимое файла:")
+        self.lable.grid(row=0, column=0, sticky=tk.W, padx=10, pady=6)
+
+        # Текстбокс для содержимого файла
+        self.textbox = tk.Text(self, height=20, width=60)
+        self.textbox.grid(row=1, column=0, padx=10, pady=6)
+        self.textbox.insert(tk.END, self.content.decode())
+        self.textbox.config(state="disabled")
+
 
 
 # Функция вывода ошибок в консоль

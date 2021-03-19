@@ -11,11 +11,9 @@ class Frame():
         DOWNLINK = b'DOWNLINK'
         NONE = b'NONE'
 
-    def __init__(self, type:Type=Type.NONE, data=[]):
-        list = []
-        list.append(type.value)
-        list = list + data
-        self.data = list
+    def __init__(self, type:Type=Type.NONE, data=b''):
+        byte_str = b''+type.value+b'\n'+data
+        self.data = byte_str
         self.type = type
 
 # f1 = Frame(Frame.Type.LINK)
