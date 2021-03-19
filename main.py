@@ -170,9 +170,13 @@ class Connected(tk.ttk.Frame):
         self.disconnect_btn = tk.Button(self, text="Отключиться", command=self.disconnect, fg='red')
         self.disconnect_btn.grid(row=0, column=3, sticky=tk.E, padx=10, pady=6)
 
+        # Кнопка просмотра файла
+        self.show_file_btn = tk.Button(self, text="Просмотр", command=self.show_file, state="disabled")
+        self.show_file_btn.grid(row=2, column=0, sticky=tk.W, padx=10, pady=6)
+
         # Кнопка отправки файла
         self.send_file_btn = tk.Button(self, text="Отправить", command=self.send_file, fg='green', state="disabled")
-        self.send_file_btn.grid(row=2, column=0, sticky=tk.W, padx=10, pady=6)
+        self.send_file_btn.grid(row=2, column=1, sticky=tk.W, padx=10, pady=6)
 
         # Лейба логического соединения
         self.logic_con_lable = ttk.Label(self, text="Логическое соединение: не установлено")
@@ -202,6 +206,13 @@ class Connected(tk.ttk.Frame):
         frame = Frame(type=Frame.Type.DOWNLINK)
         self.parent.connection.write(frame.data)
 
+    def show_file(self):
+        self.read_file()
+        FileContent(master=tk.Toplevel(),
+                    parent=self,
+                    title=self.filename,
+                    content=self.f_bin)
+
     # Функция выбора файла
     def pick_file(self):
         # сохраняем путь до файла
@@ -213,6 +224,7 @@ class Connected(tk.ttk.Frame):
         self.filename = self.temp[-1]
         # устанавливаем название выбранного файла лейбе
         self.file_name_lable.config(text=self.filename)
+        self.show_file_btn.config(state="normal")
 
     # Функция чтения файла
     def read_file(self):
@@ -325,6 +337,31 @@ class Connected(tk.ttk.Frame):
             self.textbox.insert(tk.INSERT, users)
             self.textbox.config(state=tk.DISABLED)
             time.sleep(1)
+
+class FileContent(tk.Frame):
+    # Конструктор
+    def __init__(self, master=None, parent=None, title=None, content=None):
+        super().__init__(master)
+        self.parent = parent
+        self.pack()
+        self.master = master
+        self.master.title(title)
+        self.master.resizable(False, False)
+        self.content = content
+
+        self.set_layout()
+
+    def set_layout(self):
+        # Лейба выбора файла
+        self.lable = ttk.Label(self, text="Содержимое файла:")
+        self.lable.grid(row=0, column=0, sticky=tk.W, padx=10, pady=6)
+
+        # Текстбокс для содержимого файла
+        self.textbox = tk.Text(self, height=20, width=60)
+        self.textbox.grid(row=1, column=0, padx=10, pady=6)
+        self.textbox.insert(tk.END, self.content.decode())
+        self.textbox.config(state="disabled")
+
 
 
 # Функция вывода ошибок в консоль
