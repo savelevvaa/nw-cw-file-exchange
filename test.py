@@ -8,6 +8,8 @@ import struct
 ser = serial.Serial("COM1")
 ser.isOpen()
 
+ser.write()
+
 f_str = open('text.txt', 'rt').read()
 f_bin = open('text.txt', 'rb').read()
 
