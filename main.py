@@ -8,6 +8,7 @@ import threading
 import time
 from network.session import *
 from network.frame import *
+from network.coding import *
 
 class Connection(tk.Frame):
     # Конструктор
@@ -237,8 +238,10 @@ class Connected(tk.ttk.Frame):
         if len(data_str) > 0:
             name = self.filename.encode()
             out_str = name + b'\n' + data_str
-            frame = Frame(type=Frame.Type.DATA, data=out_str)
-            print('frame data before sending: ' + frame.data.decode())
+            frame = Frame(type=Frame.Type.DATA)
+            for byte in out_str:
+                print(byte)
+                frame.data += encoding(byte)
             self.parent.connection.write(frame.data)
 
     # Функция сохранения файла
