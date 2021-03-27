@@ -5,7 +5,7 @@ import serial
 import serial.tools.list_ports as port_list
 import struct
 
-str2 = 'brt привет как дела'
+str2 = 'text.txt максим лох hahahha'
 bytess = str2.encode()
 other_bytes = b''
 for i in range(0, bytess.__len__(), 1):
