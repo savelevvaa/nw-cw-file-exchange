@@ -86,6 +86,9 @@ def encoding(byte: None):
     byte = bin(byte)
     byte = byte.replace('0b','')
     inf_vector = list(map(lambda x: int(x), byte))
+    while inf_vector.__len__() != 8:
+        inf_vector.insert(0, 0)
+
     while inf_vector.__len__() < 11:
         inf_vector.append(0)
     moved_inf_vector = [None] * 15
@@ -103,7 +106,24 @@ def encoding(byte: None):
             circle_code[i] = moved_inf_vector[i]
         else:
             circle_code[i] = remain_vector[i - 11]
-    to_list = [str(integer) for integer in circle_code]
+    to_list = [str(i) for i in circle_code]
     to_string = "".join(to_list)
-    to_bytes = to_string.encode()
+    to_bytes = to_string.encode() + b'\n'
     return to_bytes
+
+def decoding(income_str: None):
+    birth_polynom = [1, 0, 0, 1, 1]
+    income_str = income_str.decode().replace('\n', '')
+    income_vector = list(map(lambda x: int(x), income_str))
+    check_error = [0, 0, 0, 0]
+    xorVec(check_error, income_vector, birth_polynom)
+    if not check_error[0] and not check_error[1] and not check_error[2] and not check_error[3]:
+        for i in range(0, 7, 1):
+            income_vector.pop()
+        while income_vector[0] == 0:
+            income_vector.pop(0)
+        to_list = [str(i) for i in income_vector]
+        to_string = "".join(to_list)
+        to_int = int(to_string, 2)
+        to_byte = to_int.to_bytes(1, 'big')
+        return to_byte
