@@ -240,7 +240,6 @@ class Connected(tk.ttk.Frame):
             out_str = name + b'\n' + data_str
             frame = Frame(type=Frame.Type.DATA)
             for byte in out_str:
-                print(byte)
                 frame.data += encoding(byte)
             self.parent.connection.write(frame.data)
 
@@ -256,9 +255,8 @@ class Connected(tk.ttk.Frame):
         if file_name == "":
             return
         # получаем содержимое файла
-        self.in_list = self.files[file_name]
-        for line in self.in_list:
-            text2save += line.decode()
+        in_str = self.files[file_name]
+        text2save = in_str.decode()
         # вызываем диалог сохранения файла
         self.save = fd.asksaveasfile(mode='w', filetypes=filestypes, defaultextension=filestypes)
         if self.save is None:
@@ -302,11 +300,16 @@ class Connected(tk.ttk.Frame):
                     elif frame_type == Frame.Type.REP.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mREP frame recieved\033[0m')
                     elif frame_type == Frame.Type.DATA.value:
+                        # TODO убрать из первой строки название файла (при сохранении)
                         print(f'( {self.session.username} ) : ' + '\033[33mDATA frame recieved\033[0m')
-                        bin_file_name = in_list.pop(0)
-                        self.recieved_file_name = bin_file_name.decode().replace('\n','')
+                        income_data = b''
+                        for byte in in_list:
+                            income_data += decoding(byte)
+                        temp = income_data.decode().split('\n')
+                        file_name = temp[0]
+                        self.recieved_file_name = file_name.replace('\n','')
                         # заполняем словарь { имя файла : содержание (байты) }
-                        self.files[self.recieved_file_name] = in_list
+                        self.files[self.recieved_file_name] = income_data
                     elif frame_type == Frame.Type.ERROR.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mERROR frame recieved\033[0m')
                     elif frame_type == Frame.Type.DOWNLINK.value:
