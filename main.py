@@ -286,33 +286,44 @@ class Connected(tk.ttk.Frame):
                 # читаем из порта
                 in_list = self.parent.connection.readlines()
                 in_len = len(in_list)
+                # если чтото прочитали, то обрабатываем
                 if in_len > 0:
+                    # читаем тип фрейма
                     frame_type = in_list.pop(0).replace(b'\n', b'')
                     # ОБРАБАТЫВАЕМ ПОЛУЧЕННЫЙ ФРЕЙМ (по типу)
                     if frame_type == Frame.Type.LINK.value and self.LINKED == False:
                         print(f'( {self.session.username} ) : '+'\033[33mLINK frame recieved\033[0m')
+                        # устанавливаем логическую связ
                         self.LINKED = True
                         self.logic_con_lable.config(text="Логическое соединение: установлено")
                         self.send_file_btn.config(state="normal")
+                        # отправляем такой же фрейм в ответ на полученный
                         self.send_link_frame()
+                    # TODO обработка ASK фрейма
                     elif frame_type == Frame.Type.ASK.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mASK frame recieved\033[0m')
+                    # TODO обработка REP фрейма
                     elif frame_type == Frame.Type.REP.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mREP frame recieved\033[0m')
                     elif frame_type == Frame.Type.DATA.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mDATA frame recieved\033[0m')
                         income_data = b''
+                        # декодируем полученные данные
                         for byte in in_list:
                             income_data += decoding(byte)
+                        # получаем имя полученного файла
                         file_name = income_data.decode().split('\n')[0]
                         self.recieved_file_name = file_name
+                        # удаляем имя файла из название файла
                         income_data = income_data.replace(file_name.encode()+b'\n', b'')
                         # заполняем словарь { имя файла : содержание (байты) }
                         self.files[self.recieved_file_name] = income_data
+                    # TODO обработка ERROR фрейма
                     elif frame_type == Frame.Type.ERROR.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mERROR frame recieved\033[0m')
                     elif frame_type == Frame.Type.DOWNLINK.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mDOWNLINK frame recieved\033[0m')
+                        # разрываем установленное соединение
                         self.LINKED = False
                         self.logic_con_lable.config(text="Логическое соединение: разорвано")
                         self.send_file_btn.config(state="disabled")
@@ -330,7 +341,7 @@ class Connected(tk.ttk.Frame):
                 # обновляем выпадающий список полученных файлов
                 self.files_list.config(values=keys)
 
-    # Потоковая функция обновления пользователей
+    # Потоковая функция обновления пользователей в списке
     def users(self):
         while 1:
             users = ""
@@ -343,6 +354,7 @@ class Connected(tk.ttk.Frame):
             self.textbox.config(state=tk.DISABLED)
             time.sleep(1)
 
+# Дочернее окно для отображения содержимого файла
 class FileContent(tk.Frame):
     # Конструктор
     def __init__(self, master=None, parent=None, title=None, content=None):
