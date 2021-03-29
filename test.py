@@ -5,10 +5,21 @@ import serial
 import serial.tools.list_ports as port_list
 import struct
 
+str2 = 'text.txt максим лох hahahha'
+bytess = str2.encode()
+other_bytes = b''
+for i in range(0, bytess.__len__(), 1):
+    b = bytess[i]
+    other_bytes += b.to_bytes(1, 'big')
+
+print(other_bytes.decode())
+
+
+str1 = '1111111'
+print(chr(int(str1[8:], 2)))
+
 ser = serial.Serial("COM1")
 ser.isOpen()
-
-ser.write()
 
 f_str = open('text.txt', 'rt').read()
 f_bin = open('text.txt', 'rb').read()
@@ -31,4 +42,6 @@ for byte in byte_list:
     str_text += str(byte_int).decode()
 
 print(str_text)
+
+
 
