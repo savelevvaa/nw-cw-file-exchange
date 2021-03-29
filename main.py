@@ -124,6 +124,7 @@ class Connected(tk.ttk.Frame):
 
         # Переменные
         self.filename = "Файл не выбран"
+        self.pwd = ""
         self.files = dict()
         self.LINKED = False
 
@@ -222,6 +223,7 @@ class Connected(tk.ttk.Frame):
         # получаем имя файла для просмотра
         file_name = self.files_list.get()
         if file_name == "":
+            msb.showwarning(title="Внимание", message="Выбирите файл для просмотра")
             return
         content = self.files[file_name]
         FileContent(master=tk.Toplevel(),
@@ -248,7 +250,11 @@ class Connected(tk.ttk.Frame):
 
     # Функция отправки файла
     def send_file(self):
-        self.read_file()
+        if self.pwd == "":
+            msb.showwarning(title="Внимание", message="Выбирите файл")
+            return
+        else:
+            self.read_file()
         data_str = self.f_bin
         if len(data_str) > 0:
             name = self.filename.encode()
@@ -268,6 +274,7 @@ class Connected(tk.ttk.Frame):
         # получаем имя файла для сохранения
         file_name = self.files_list.get()
         if file_name == "":
+            msb.showwarning(title="Внимание", message="Выбирите файл для сохранения")
             return
         # получаем содержимое файла
         in_str = self.files[file_name]
