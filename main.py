@@ -173,11 +173,11 @@ class Connected(tk.ttk.Frame):
 
         # Кнопка просмотра файла
         self.show_file_btn = tk.Button(self, text="Просмотр", command=self.show_file, state="disabled")
-        self.show_file_btn.grid(row=2, column=0, sticky=tk.W, padx=10, pady=6)
+        self.show_file_btn.grid(row=2, column=1, sticky=tk.W, padx=10, pady=6)
 
         # Кнопка отправки файла
         self.send_file_btn = tk.Button(self, text="Отправить", command=self.send_file, fg='green', state="disabled")
-        self.send_file_btn.grid(row=2, column=1, sticky=tk.W, padx=10, pady=6)
+        self.send_file_btn.grid(row=2, column=0, sticky=tk.W, padx=10, pady=6)
 
         # Лейба логического соединения
         self.logic_con_lable = ttk.Label(self, text="Логическое соединение: не установлено")
@@ -194,6 +194,10 @@ class Connected(tk.ttk.Frame):
         # Кнопка сохранения файла
         self.save_file_btn = tk.ttk.Button(self, text="Сохранить", command=self.save_file, state="disabled")
         self.save_file_btn.grid(row=4, column=0, sticky=tk.W, padx=10, pady=6)
+
+        # Кнопка просмотра полученного файла
+        self.show_recieved_file_btn = tk.ttk.Button(self, text="Просмотр", command=self.show_recieved_file, state="disabled")
+        self.show_recieved_file_btn.grid(row=4, column=1, sticky=tk.W, padx=10, pady=6)
 
         # Выпадающий список полученных файлов
         self.files_list = ttk.Combobox(self)
@@ -213,6 +217,17 @@ class Connected(tk.ttk.Frame):
                     parent=self,
                     title=self.filename,
                     content=self.f_bin)
+
+    def show_recieved_file(self):
+        # получаем имя файла для просмотра
+        file_name = self.files_list.get()
+        if file_name == "":
+            return
+        content = self.files[file_name]
+        FileContent(master=tk.Toplevel(),
+                    parent=self,
+                    title=file_name,
+                    content=content)
 
     # Функция выбора файла
     def pick_file(self):
@@ -331,6 +346,8 @@ class Connected(tk.ttk.Frame):
             if self.files.__len__() > 0:
                 # разблокируем кнопку сохранения
                 self.save_file_btn.config(state="enable")
+                # разблокируем кнопку просмотра полученного файла
+                self.show_recieved_file_btn.config(state="enable")
                 # обновляем лейбу
                 self.file_recieved_lable.config(text="Получено файлов: " + str(self.files.__len__()))
                 self.file_recieved_lable.config(fg="green")
