@@ -300,14 +300,13 @@ class Connected(tk.ttk.Frame):
                     elif frame_type == Frame.Type.REP.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mREP frame recieved\033[0m')
                     elif frame_type == Frame.Type.DATA.value:
-                        # TODO убрать из первой строки название файла (при сохранении)
                         print(f'( {self.session.username} ) : ' + '\033[33mDATA frame recieved\033[0m')
                         income_data = b''
                         for byte in in_list:
                             income_data += decoding(byte)
-                        temp = income_data.decode().split('\n')
-                        file_name = temp[0]
-                        self.recieved_file_name = file_name.replace('\n','')
+                        file_name = income_data.decode().split('\n')[0]
+                        self.recieved_file_name = file_name
+                        income_data = income_data.replace(file_name.encode()+b'\n', b'')
                         # заполняем словарь { имя файла : содержание (байты) }
                         self.files[self.recieved_file_name] = income_data
                     elif frame_type == Frame.Type.ERROR.value:
