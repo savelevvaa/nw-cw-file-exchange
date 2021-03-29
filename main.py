@@ -8,6 +8,7 @@ import threading
 import time
 from network.session import *
 from network.frame import *
+from network.coding import *
 
 class Connection(tk.Frame):
     # Конструктор
@@ -237,8 +238,9 @@ class Connected(tk.ttk.Frame):
         if len(data_str) > 0:
             name = self.filename.encode()
             out_str = name + b'\n' + data_str
-            frame = Frame(type=Frame.Type.DATA, data=out_str)
-            print('frame data before sending: ' + frame.data.decode())
+            frame = Frame(type=Frame.Type.DATA)
+            for byte in out_str:
+                frame.data += encoding(byte)
             self.parent.connection.write(frame.data)
 
     # Функция сохранения файла
@@ -253,9 +255,8 @@ class Connected(tk.ttk.Frame):
         if file_name == "":
             return
         # получаем содержимое файла
-        self.in_list = self.files[file_name]
-        for line in self.in_list:
-            text2save += line.decode()
+        in_str = self.files[file_name]
+        text2save = in_str.decode()
         # вызываем диалог сохранения файла
         self.save = fd.asksaveasfile(mode='w', filetypes=filestypes, defaultextension=filestypes)
         if self.save is None:
@@ -285,29 +286,44 @@ class Connected(tk.ttk.Frame):
                 # читаем из порта
                 in_list = self.parent.connection.readlines()
                 in_len = len(in_list)
+                # если чтото прочитали, то обрабатываем
                 if in_len > 0:
+                    # читаем тип фрейма
                     frame_type = in_list.pop(0).replace(b'\n', b'')
                     # ОБРАБАТЫВАЕМ ПОЛУЧЕННЫЙ ФРЕЙМ (по типу)
                     if frame_type == Frame.Type.LINK.value and self.LINKED == False:
                         print(f'( {self.session.username} ) : '+'\033[33mLINK frame recieved\033[0m')
+                        # устанавливаем логическую связ
                         self.LINKED = True
                         self.logic_con_lable.config(text="Логическое соединение: установлено")
                         self.send_file_btn.config(state="normal")
+                        # отправляем такой же фрейм в ответ на полученный
                         self.send_link_frame()
+                    # TODO обработка ASK фрейма
                     elif frame_type == Frame.Type.ASK.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mASK frame recieved\033[0m')
+                    # TODO обработка REP фрейма
                     elif frame_type == Frame.Type.REP.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mREP frame recieved\033[0m')
                     elif frame_type == Frame.Type.DATA.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mDATA frame recieved\033[0m')
-                        bin_file_name = in_list.pop(0)
-                        self.recieved_file_name = bin_file_name.decode().replace('\n','')
+                        income_data = b''
+                        # декодируем полученные данные
+                        for byte in in_list:
+                            income_data += decoding(byte)
+                        # получаем имя полученного файла
+                        file_name = income_data.decode().split('\n')[0]
+                        self.recieved_file_name = file_name
+                        # удаляем имя файла из название файла
+                        income_data = income_data.replace(file_name.encode()+b'\n', b'')
                         # заполняем словарь { имя файла : содержание (байты) }
-                        self.files[self.recieved_file_name] = in_list
+                        self.files[self.recieved_file_name] = income_data
+                    # TODO обработка ERROR фрейма
                     elif frame_type == Frame.Type.ERROR.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mERROR frame recieved\033[0m')
                     elif frame_type == Frame.Type.DOWNLINK.value:
                         print(f'( {self.session.username} ) : ' + '\033[33mDOWNLINK frame recieved\033[0m')
+                        # разрываем установленное соединение
                         self.LINKED = False
                         self.logic_con_lable.config(text="Логическое соединение: разорвано")
                         self.send_file_btn.config(state="disabled")
@@ -325,7 +341,7 @@ class Connected(tk.ttk.Frame):
                 # обновляем выпадающий список полученных файлов
                 self.files_list.config(values=keys)
 
-    # Потоковая функция обновления пользователей
+    # Потоковая функция обновления пользователей в списке
     def users(self):
         while 1:
             users = ""
@@ -338,6 +354,7 @@ class Connected(tk.ttk.Frame):
             self.textbox.config(state=tk.DISABLED)
             time.sleep(1)
 
+# Дочернее окно для отображения содержимого файла
 class FileContent(tk.Frame):
     # Конструктор
     def __init__(self, master=None, parent=None, title=None, content=None):
