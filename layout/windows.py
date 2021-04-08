@@ -203,6 +203,14 @@ class Connected(tk.ttk.Frame):
         self.files_list = ttk.Combobox(self)
         self.files_list.grid(row=4, column=3, sticky=tk.W, padx=10, pady=6)
 
+        # Разделитель
+        self.log_separator = tk.ttk.Separator(self)
+        self.log_separator.grid(row=5, column=0, columnspan=5, sticky=tk.W + tk.E)
+
+        # Текстбокс для логов
+        self.log_textbox = tk.Text(self, width=80, height=6)
+        self.log_textbox.grid(row=7, column=0, columnspan=5, padx=10, pady=6)
+
     def send_frame(self, type):
         frame = Frame(type=type)
         self.parent.nm.connection.send_control_bytes(frame.data)
@@ -296,16 +304,16 @@ class Connected(tk.ttk.Frame):
             in_len = 0
             while in_len < 1:
                 # читаем из порта
-                in_list = self.parent.nm.read_bytes()
+                in_list = self.parent.nm.receive_bytes()
                 in_len = len(in_list)
                 # если чтото прочитали, то обрабатываем
                 if in_len > 0:
                     # читаем тип фрейма
-                    frame_type = in_list.pop(0).replace(b'\n', b'')
+                    frame_type = in_list.pop(0)
                     # ОБРАБАТЫВАЕМ ПОЛУЧЕННЫЙ ФРЕЙМ (по типу)
                     if frame_type == Frame.Type.LINK.value and self.LINKED == False:
                         print(f'( {self.parent.nm.session.username} ) : '+'\033[33mLINK frame recieved\033[0m')
-                        # устанавливаем логическую связ
+                        # устанавливаем логическую связь
                         self.LINKED = True
                         self.logic_con_lable.config(text="Логическое соединение: установлено")
                         self.send_file_btn.config(state="normal")
@@ -319,10 +327,7 @@ class Connected(tk.ttk.Frame):
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mREP frame recieved\033[0m')
                     elif frame_type == Frame.Type.DATA.value:
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mDATA frame recieved\033[0m')
-                        income_data = b''
-                        # декодируем полученные данные
-                        for byte in in_list:
-                            income_data += decoding(byte)
+                        income_data = in_list.pop()
                         # получаем имя полученного файла
                         file_name = income_data.decode().split('\n')[0]
                         self.recieved_file_name = file_name

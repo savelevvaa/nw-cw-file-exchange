@@ -30,6 +30,20 @@ class NetworkManager():
             frame.data += encoding(byte)
         self.connection.write(frame.data)
 
-    def read_bytes(self):
-        return self.connection.readlines()
+    def receive_bytes(self):
+        income_data = b''
+        return_list = []
+        in_list = self.connection.readlines()
+        if in_list.__len__() == 0:
+            return return_list
+        frame_type = in_list.pop(0).replace(b'\n', b'')
+        return_list.append(frame_type)
+        if in_list.__len__() == 0:
+            return return_list
+        # декодируем полученные данные
+        for byte in in_list:
+            income_data += decoding(byte)
+        return_list.append(frame_type)
+        return_list.append(income_data)
+        return return_list
 
