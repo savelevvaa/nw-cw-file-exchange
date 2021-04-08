@@ -6,6 +6,7 @@ import serial
 import serial.tools.list_ports as port_list
 import threading
 import time
+from datetime import datetime
 from network.frame import *
 from network.coding import *
 from network.networkmanager import NetworkManager
@@ -211,6 +212,11 @@ class Connected(tk.ttk.Frame):
         self.log_textbox = tk.Text(self, width=80, height=6)
         self.log_textbox.grid(row=7, column=0, columnspan=5, padx=10, pady=6)
 
+        self.log_textbox.config(state=tk.NORMAL)
+        self.log_textbox.insert(tk.INSERT, f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Соединение установленно\n")
+        self.log_textbox.insert(tk.INSERT, f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) {self.master.title()} инициализирована\n")
+        self.log_textbox.config(state=tk.DISABLED)
+
     def send_frame(self, type):
         frame = Frame(type=type)
         self.parent.nm.connection.send_control_bytes(frame.data)
@@ -313,6 +319,12 @@ class Connected(tk.ttk.Frame):
                     # ОБРАБАТЫВАЕМ ПОЛУЧЕННЫЙ ФРЕЙМ (по типу)
                     if frame_type == Frame.Type.LINK.value and self.LINKED == False:
                         print(f'( {self.parent.nm.session.username} ) : '+'\033[33mLINK frame recieved\033[0m')
+
+                        self.log_textbox.config(state=tk.NORMAL)
+                        self.log_textbox.insert(tk.INSERT,
+                                                f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Получен LINK кадр\n")
+                        self.log_textbox.config(state=tk.DISABLED)
+
                         # устанавливаем логическую связь
                         self.LINKED = True
                         self.logic_con_lable.config(text="Логическое соединение: установлено")
@@ -322,11 +334,23 @@ class Connected(tk.ttk.Frame):
                     # TODO обработка ASK фрейма
                     elif frame_type == Frame.Type.ASK.value:
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mASK frame recieved\033[0m')
+                        self.log_textbox.config(state=tk.NORMAL)
+                        self.log_textbox.insert(tk.INSERT,
+                                                f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Получен ASK кадр\n")
+                        self.log_textbox.config(state=tk.DISABLED)
                     # TODO обработка REP фрейма
                     elif frame_type == Frame.Type.REP.value:
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mREP frame recieved\033[0m')
+                        self.log_textbox.config(state=tk.NORMAL)
+                        self.log_textbox.insert(tk.INSERT,
+                                                f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Получен REP кадр\n")
+                        self.log_textbox.config(state=tk.DISABLED)
                     elif frame_type == Frame.Type.DATA.value:
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mDATA frame recieved\033[0m')
+                        self.log_textbox.config(state=tk.NORMAL)
+                        self.log_textbox.insert(tk.INSERT,
+                                                f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Получен DATA кадр\n")
+                        self.log_textbox.config(state=tk.DISABLED)
                         income_data = in_list.pop()
                         # получаем имя полученного файла
                         file_name = income_data.decode().split('\n')[0]
@@ -338,8 +362,16 @@ class Connected(tk.ttk.Frame):
                     # TODO обработка ERROR фрейма
                     elif frame_type == Frame.Type.ERROR.value:
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mERROR frame recieved\033[0m')
+                        self.log_textbox.config(state=tk.NORMAL)
+                        self.log_textbox.insert(tk.INSERT,
+                                                f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Получен ERROR кадр\n")
+                        self.log_textbox.config(state=tk.DISABLED)
                     elif frame_type == Frame.Type.DOWNLINK.value:
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mDOWNLINK frame recieved\033[0m')
+                        self.log_textbox.config(state=tk.NORMAL)
+                        self.log_textbox.insert(tk.INSERT,
+                                                f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Получен DOWNLINK кадр\n")
+                        self.log_textbox.config(state=tk.DISABLED)
                         # разрываем установленное соединение
                         self.LINKED = False
                         self.logic_con_lable.config(text="Логическое соединение: разорвано")
