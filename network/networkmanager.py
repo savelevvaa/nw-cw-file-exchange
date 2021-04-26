@@ -1,5 +1,5 @@
 import serial
-from random import randint
+import random
 
 from .session import Session
 from .frame import Frame
@@ -73,10 +73,13 @@ class NetworkManager():
 
         return return_list
 
+    # TODO Доделать рандомайзер
     def jammer(self, byte):
-        if randint(0, 99) < 3:
+        # num = randint(0, 99)
+        num = random.random()
+        if num < 0.05:
             strr = byte.decode()
-            rand_index = randint(0, len(strr)-1)
+            rand_index = random.randint(0, len(strr) - 1)
             listt = list(strr)
             if byte[rand_index] == b'1':
                 listt[rand_index] = '0'
