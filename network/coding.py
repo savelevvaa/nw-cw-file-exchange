@@ -127,3 +127,5 @@ def decoding(income_str: None):
         to_int = int(to_string, 2)
         to_byte = to_int.to_bytes(1, 'big')
         return to_byte
+    else:
+        return None
