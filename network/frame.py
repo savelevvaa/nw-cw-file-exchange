@@ -5,7 +5,7 @@ class Frame():
     class Type(Enum):
         LINK = b'LINK'
         ASK = b'ASK'
-        REP = b'REP'
+        RET = b'RET'
         DATA = b'DATA'
         ERROR = b'ERROR'
         DOWNLINK = b'DOWNLINK'
