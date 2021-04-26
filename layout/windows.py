@@ -129,10 +129,11 @@ class Connected(tk.ttk.Frame):
         self.pwd = ""                       # Путь до выбранного файла
         self.files = dict()                 # Словарь полученных файлов
 
-        self.FRAME_SIZE = 10                # Размер кадра (в байтах)
+        self.FRAME_SIZE = 500               # Размер кадра (в байтах)
         self.LINKED = False                 # Флаг состояния "Подключен"
         self.SENDING = False                # Флаг состояния "Отправка"
         self.RECIEVING = False              # Флаг состояния "Получение"
+        self.RET = False                    # Флаг состояния "RET"
 
         # Счетчики
         self.rep_counter = 0                # Счетчик REP кадров
@@ -227,11 +228,7 @@ class Connected(tk.ttk.Frame):
         self.log_textbox.insert(tk.INSERT, f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) {self.master.title()} инициализирована\n")
         self.log_textbox.config(state=tk.DISABLED)
 
-    def send_frame(self, type):
-        frame = Frame(type=type)
-        self.parent.nm.connection.send_control_bytes(frame.data)
-
-
+    # Фукнция показа содержимого файла
     def show_file(self):
         self.read_file()
         FileContent(master=tk.Toplevel(),
@@ -239,6 +236,7 @@ class Connected(tk.ttk.Frame):
                     title=self.filename,
                     content=self.file_data_bin)
 
+    # Фукнция показа содержимого полученного файла
     def show_recieved_file(self):
         # получаем имя файла для просмотра
         file_name = self.files_list.get()
@@ -269,8 +267,8 @@ class Connected(tk.ttk.Frame):
 
     # Функция повторной отправки фрейма
     def repeat_sending(self):
-        end = False
-        data = self.save_sending
+        end = False                 # флаг последнего фрейма
+        data = self.save_sending    # получаем последний отправленный фрейм
         if self.file_data_bin == b"":
             end = True
             self.SENDING = False
@@ -278,9 +276,9 @@ class Connected(tk.ttk.Frame):
 
     # Функция отправки следующего фрейма
     def continue_sending(self):
-        end = False
+        end = False         # флаг последнего фрейма
         data = self.file_data_bin[0:self.FRAME_SIZE]
-        self.save_sending = data
+        self.save_sending = data    # сохраняем отправляемый фрейм
         self.file_data_bin = self.file_data_bin.replace(data, b"")
         if self.file_data_bin == b"":
             end = True
@@ -296,11 +294,11 @@ class Connected(tk.ttk.Frame):
             self.read_file()
         if len(self.file_data_bin) > 0:
             self.SENDING = True
-            end = False
+            end = False         # флаг последнего фрейма
             name = self.filename.encode()
             data = self.file_data_bin[0:self.FRAME_SIZE]
             out_str = name + b'\n' + data
-            self.save_sending = out_str
+            self.save_sending = out_str     # сохраняем отправляемый фрейм
             self.file_data_bin = self.file_data_bin.replace(data, b"")
             self.log_textbox.config(state=tk.NORMAL)
             self.log_textbox.insert(tk.INSERT,
@@ -354,16 +352,26 @@ class Connected(tk.ttk.Frame):
                 # читаем из порта
                 in_list = self.parent.nm.receive_bytes()
                 in_len = len(in_list)
+                # проверка на битый фрейм
                 if in_list == ["error"]:
+                    # если менее 10 повторных разпросов фрейма, запрашиваем еще раз
                     if self.rep_counter < 10:
                         self.parent.nm.send_control_bytes(Frame.Type.RET)
                         self.rep_counter += 1
                         break
+                    # если больше 10 запросов, отправляем ошибку
                     else:
                         self.parent.nm.send_control_bytes(Frame.Type.ERROR)
                         self.rep_counter = 0
+                        self.frame_counter = 0
+                        self.temp_file_data = b""
+                        self.RECIEVING = False
+                        self.log_textbox.config(state=tk.NORMAL)
+                        self.log_textbox.insert(tk.INSERT,
+                                                f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Ошибка при отправке файла\n")
+                        self.log_textbox.config(state=tk.DISABLED)
                         break
-                # если чтото прочитали, то обрабатываем
+                # если фрейм целый, то обрабатываем
                 if in_len > 0:
                     start_byte = in_list.pop(0)
                     if start_byte == b"\xff":
@@ -373,7 +381,9 @@ class Connected(tk.ttk.Frame):
                         break
                     # читаем тип фрейма
                     frame_type = in_list.pop(0)
+
                     # ОБРАБАТЫВАЕМ ПОЛУЧЕННЫЙ ФРЕЙМ (по типу)
+                    # LINK КАДР
                     if frame_type == Frame.Type.LINK.value and self.LINKED == False:
                         print(f'( {self.parent.nm.session.username} ) : '+'\033[33mLINK frame recieved\033[0m')
 
@@ -388,6 +398,8 @@ class Connected(tk.ttk.Frame):
                         self.send_file_btn.config(state="normal")
                         # отправляем такой же фрейм в ответ на полученный
                         self.parent.nm.send_control_bytes(Frame.Type.LINK)
+
+                    # ASK КАДР
                     elif frame_type == Frame.Type.ASK.value:
                         # print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mASK frame recieved\033[0m')
                         # self.log_textbox.config(state=tk.NORMAL)
@@ -401,10 +413,13 @@ class Connected(tk.ttk.Frame):
                             self.log_textbox.insert(tk.INSERT,
                                                     f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Файл {self.filename} успешно отправлен\n")
                             self.log_textbox.config(state=tk.DISABLED)
+
+                    # RET КАДР
                     elif frame_type == Frame.Type.RET.value:
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mRET frame recieved\033[0m')
                         self.repeat_sending()
 
+                    # DATA КАДР
                     elif frame_type == Frame.Type.DATA.value:
                         if self.RECIEVING == False:
                             self.log_textbox.config(state=tk.NORMAL)
@@ -414,15 +429,16 @@ class Connected(tk.ttk.Frame):
                         self.RECIEVING = True
                         self.frame_counter += 1
                         print(f'( {self.parent.nm.session.username} ) : '+f'\033[34m{self.frame_counter} frame recieved\033[0m')
+                        # дополняем контент файла новым из фрейма
                         self.temp_file_data += in_list.pop(0)
                         self.rep_counter = 0
                         if in_list == [b'\xff', b'\xff']:
                             pass
                         elif in_list == [b'\xff']:
-                            # отправляем ASK кадр
+                            # отправляем ASK кадр, ждем новый фрейм
                             self.parent.nm.send_control_bytes(Frame.Type.ASK)
                             break
-
+                        self.parent.nm.send_control_bytes(Frame.Type.ASK)
                         # получаем имя полученного файла
                         file_name = self.temp_file_data.decode().split('\n')[0]
                         self.recieved_file_name = file_name
@@ -435,15 +451,27 @@ class Connected(tk.ttk.Frame):
                         self.log_textbox.insert(tk.INSERT,
                                                 f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Файл '{file_name}' успешно получен\n")
                         self.log_textbox.config(state=tk.DISABLED)
+                        # чистим временное содержимое файла
                         self.temp_file_data = b""
+                        self.frame_counter = 0
                         self.RECIEVING = False
-                    # TODO обработка ERROR фрейма
+
+                    # ERROR КАДР
                     elif frame_type == Frame.Type.ERROR.value:
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mERROR frame recieved\033[0m')
-                        self.log_textbox.config(state=tk.NORMAL)
-                        self.log_textbox.insert(tk.INSERT,
-                                                f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Получен ERROR кадр\n")
-                        self.log_textbox.config(state=tk.DISABLED)
+                        # self.log_textbox.config(state=tk.NORMAL)
+                        # self.log_textbox.insert(tk.INSERT,
+                        #                         f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Получен ERROR кадр\n")
+                        # self.log_textbox.config(state=tk.DISABLED)
+
+                        if self.SENDING == True:
+                            self.log_textbox.config(state=tk.NORMAL)
+                            self.log_textbox.insert(tk.INSERT,
+                                                    f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Ошибка отправки файла\n")
+                            self.log_textbox.config(state=tk.DISABLED)
+                            self.SENDING == False
+
+                    # DOWNLINK КАДР
                     elif frame_type == Frame.Type.DOWNLINK.value:
                         print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mDOWNLINK frame recieved\033[0m')
                         self.log_textbox.config(state=tk.NORMAL)
