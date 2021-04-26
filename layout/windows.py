@@ -356,7 +356,7 @@ class Connected(tk.ttk.Frame):
                 in_len = len(in_list)
                 if in_list == ["error"]:
                     if self.rep_counter < 10:
-                        self.parent.nm.send_control_bytes(Frame.Type.REP)
+                        self.parent.nm.send_control_bytes(Frame.Type.RET)
                         self.rep_counter += 1
                         break
                     else:
@@ -401,8 +401,8 @@ class Connected(tk.ttk.Frame):
                             self.log_textbox.insert(tk.INSERT,
                                                     f"[{datetime.now().strftime('%H:%M:%S')}](SYSTEM) Файл {self.filename} успешно отправлен\n")
                             self.log_textbox.config(state=tk.DISABLED)
-                    elif frame_type == Frame.Type.REP.value:
-                        print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mREP frame recieved\033[0m')
+                    elif frame_type == Frame.Type.RET.value:
+                        print(f'( {self.parent.nm.session.username} ) : ' + '\033[33mRET frame recieved\033[0m')
                         self.repeat_sending()
 
                     elif frame_type == Frame.Type.DATA.value:
