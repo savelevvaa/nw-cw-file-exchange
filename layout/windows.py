@@ -42,7 +42,7 @@ class Connection(tk.Frame):
         self.separator.grid(row=1, column=0, columnspan=2, sticky=tk.W + tk.E)
 
         # Лейба и список портов
-        self.port_list_lable = ttk.Label(self, text="Выбирите доступный порт:")
+        self.port_list_lable = ttk.Label(self, text="Выберите доступный порт:")
         self.port_list_lable.grid(row=2, column=0, sticky=tk.W, padx=10, pady=10)
         self.port_list = ttk.Combobox(self, values=ports)
         self.port_list.grid(row=2, column=1, sticky=tk.W+tk.E, padx=10)
@@ -168,7 +168,7 @@ class Connected(tk.ttk.Frame):
         self.textbox.grid(row=1, column=0, padx=10, pady=6)
 
         # Лейба выбора файла
-        self.file_lable = ttk.Label(self, text="Выбирите файл:")
+        self.file_lable = ttk.Label(self, text="Выберите файл:")
         self.file_lable.grid(row=0, column=0, sticky=tk.W, padx=10, pady=6)
 
         # Кнопка выбора файла
