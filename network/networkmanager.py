@@ -77,7 +77,7 @@ class NetworkManager():
     def jammer(self, byte):
         # num = randint(0, 99)
         num = random.random()
-        if num < 0.05:
+        if num > 0.997:
             strr = byte.decode()
             rand_index = random.randint(0, len(strr) - 1)
             listt = list(strr)
